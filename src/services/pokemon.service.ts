@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Pokemon } from '../types';
+import { evolutionChain } from '../data/evolution';
 
 export class PokemonService {
   private cache: Map<number, Pokemon> = new Map();
@@ -11,6 +12,23 @@ export class PokemonService {
     if (bst < 580) return 3;
     if (bst < 670) return 4;
     return 5;
+  }
+
+  // Check if ID exists in the chain keys
+  canEvolve(id: number): boolean {
+    return !!evolutionChain[id];
+  }
+
+  // Get new Pokemon data for evolution
+  async evolve(pokemon: Pokemon): Promise<Pokemon | null> {
+    const possibleEvolutions = evolutionChain[pokemon.id];
+    if (!possibleEvolutions) return null;
+
+    // Pick random evolution (e.g. for Eevee)
+    const nextId = possibleEvolutions[Math.floor(Math.random() * possibleEvolutions.length)];
+    
+    // Fetch new species data (keeps shiny status)
+    return this.getPokemon(nextId, pokemon.shiny);
   }
 
   async getPokemon(id: number, isShiny: boolean = false): Promise<Pokemon | null> {

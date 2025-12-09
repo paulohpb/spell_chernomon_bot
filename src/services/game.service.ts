@@ -3,31 +3,41 @@ import { PlayerSession, AdventureEvent, Item } from '../types';
 export class GameService {
   private sessions: Map<number, PlayerSession> = new Map();
 
-  private adventureWeights: { event: AdventureEvent; weight: number }[] = [
-    { event: 'CATCH_POKEMON', weight: 3 },
-    { event: 'BATTLE_TRAINER', weight: 1 },
-    { event: 'BUY_POTIONS', weight: 1 },
-    { event: 'NOTHING', weight: 1 },
-    { event: 'CATCH_TWO', weight: 1 },
-    { event: 'VISIT_DAYCARE', weight: 1 },
-    { event: 'TEAM_ROCKET', weight: 1 },
-    { event: 'MYSTERIOUS_EGG', weight: 1 },
-    { event: 'LEGENDARY', weight: 1 },
-    { event: 'TRADE', weight: 1 },
-    { event: 'FIND_ITEM', weight: 1 },
-    { event: 'EXPLORE_CAVE', weight: 1 },
-    { event: 'SNORLAX', weight: 1 },
-    { event: 'MULTITASK', weight: 1 },
-    { event: 'FISHING', weight: 1 },
-    { event: 'FOSSIL', weight: 1 },
-    { event: 'RIVAL', weight: 1 },
+  // Weights for "What to do first?" (Start of game)
+  private startAdventureWeights: { item: AdventureEvent; weight: number }[] = [
+    { item: 'CATCH_POKEMON', weight: 2 },
+    { item: 'BATTLE_TRAINER', weight: 2 },
+    { item: 'BUY_POTIONS', weight: 2 },
+    { item: 'NOTHING', weight: 1 } // "Go Straight"
+  ];
+
+  // Weights for "Adventure Continues" (Between Gyms)
+  private mainAdventureWeights: { item: AdventureEvent; weight: number }[] = [
+    { item: 'CATCH_POKEMON', weight: 3 },
+    { item: 'BATTLE_TRAINER', weight: 1 },
+    { item: 'BUY_POTIONS', weight: 1 },
+    { item: 'NOTHING', weight: 1 },
+    { item: 'CATCH_TWO', weight: 1 },
+    { item: 'VISIT_DAYCARE', weight: 1 },
+    { item: 'TEAM_ROCKET', weight: 1 },
+    { item: 'MYSTERIOUS_EGG', weight: 1 },
+    { item: 'LEGENDARY', weight: 1 },
+    { item: 'TRADE', weight: 1 },
+    { item: 'FIND_ITEM', weight: 1 },
+    { item: 'EXPLORE_CAVE', weight: 1 },
+    { item: 'SNORLAX', weight: 1 },
+    { item: 'MULTITASK', weight: 1 },
+    { item: 'FISHING', weight: 1 },
+    { item: 'FOSSIL', weight: 1 },
+    { item: 'RIVAL', weight: 1 },
   ];
 
   getSession(userId: number): PlayerSession {
     if (!this.sessions.has(userId)) {
       this.sessions.set(userId, {
         userId,
-        state: 'CHARACTER_SELECT',
+        state: 'GEN_ROULETTE', // Start here
+        gender: 'male',
         generation: 1,
         round: 0,
         team: [],
@@ -45,24 +55,41 @@ export class GameService {
     return this.getSession(userId);
   }
 
-  spinAdventure(): AdventureEvent {
-    const totalWeight = this.adventureWeights.reduce((acc, item) => acc + item.weight, 0);
+  // Generic Roulette Spinner
+  spin<T>(options: { item: T, weight: number }[]): T {
+    const totalWeight = options.reduce((acc, opt) => acc + opt.weight, 0);
     let random = Math.random() * totalWeight;
-    
-    for (const item of this.adventureWeights) {
-      if (random < item.weight) return item.event;
-      random -= item.weight;
+    for (const opt of options) {
+      if (random < opt.weight) return opt.item;
+      random -= opt.weight;
     }
-    return 'NOTHING';
+    return options[0].item;
+  }
+
+  spinGen(): number {
+    // Equal weights for Gens 1-8
+    const gens = [1, 2, 3, 4, 5, 6, 7, 8].map(g => ({ item: g, weight: 1 }));
+    return this.spin(gens);
+  }
+
+  spinGender(): 'male' | 'female' {
+    return this.spin([{ item: 'male', weight: 1 }, { item: 'female', weight: 1 }]) as 'male' | 'female';
+  }
+
+  spinStartAdventure(): AdventureEvent {
+    return this.spin(this.startAdventureWeights);
+  }
+
+  spinMainAdventure(): AdventureEvent {
+    return this.spin(this.mainAdventureWeights);
   }
 
   calculateBattleVictory(session: PlayerSession): boolean {
     const teamPower = session.team.reduce((acc, p) => acc + p.power, 0);
     const yesWedges = 1 + teamPower; 
-    const noWedges = session.round + 1;
+    const noWedges = session.round + 1; // Difficulty increases with round
     const totalWedges = yesWedges + noWedges;
-    const roll = Math.random() * totalWedges;
-    return roll < yesWedges;
+    return Math.random() < (yesWedges / totalWedges);
   }
 
   usePotion(session: PlayerSession): boolean {

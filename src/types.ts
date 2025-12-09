@@ -1,15 +1,18 @@
 export type GameState = 
-  | 'CHARACTER_SELECT'
-  | 'STARTER_SELECT'
-  | 'ADVENTURE'
-  | 'GYM_BATTLE'
+  | 'GEN_ROULETTE'       // 1. Spin for Generation
+  | 'GENDER_ROULETTE'    // 2. Spin for Gender
+  | 'STARTER_ROULETTE'   // 3. Spin for Starter
+  | 'START_ADVENTURE'    // 4. "What to do first?"
+  | 'ADVENTURE'          // 5. "Adventure Continues" (Between Gyms)
+  | 'GYM_BATTLE'         // 6. Battle logic
+  | 'EVOLUTION'          // 7. Post-Gym Reward
   | 'GAME_OVER'
   | 'VICTORY';
 
 export interface Pokemon {
   id: number;
   name: string;
-  power: number; // calculated dynamically
+  power: number;
   shiny: boolean;
   baseStatsTotal: number;
 }
@@ -24,30 +27,19 @@ export interface Item {
 export interface PlayerSession {
   userId: number;
   state: GameState;
+  gender: 'male' | 'female';
   generation: number;
-  round: number; // 0 to 8 (Gyms) + Elite Four
+  round: number; // 0-8. 8 = Elite 4/Champion
   team: Pokemon[];
   storage: Pokemon[];
   items: Item[];
   badges: number;
-  gymRetriesLeft: number; 
+  gymRetriesLeft: number;
+  lastEventResult?: string; // To store text between state transitions
 }
 
 export type AdventureEvent = 
-  | 'CATCH_POKEMON' 
-  | 'BATTLE_TRAINER' 
-  | 'BUY_POTIONS' 
-  | 'NOTHING' 
-  | 'CATCH_TWO' 
-  | 'VISIT_DAYCARE' 
-  | 'TEAM_ROCKET' 
-  | 'MYSTERIOUS_EGG' 
-  | 'LEGENDARY' 
-  | 'TRADE' 
-  | 'FIND_ITEM' 
-  | 'EXPLORE_CAVE' 
-  | 'SNORLAX' 
-  | 'MULTITASK' 
-  | 'FISHING' 
-  | 'FOSSIL' 
-  | 'RIVAL';
+  | 'CATCH_POKEMON' | 'BATTLE_TRAINER' | 'BUY_POTIONS' | 'NOTHING' 
+  | 'CATCH_TWO' | 'VISIT_DAYCARE' | 'TEAM_ROCKET' | 'MYSTERIOUS_EGG' 
+  | 'LEGENDARY' | 'TRADE' | 'FIND_ITEM' | 'EXPLORE_CAVE' 
+  | 'SNORLAX' | 'MULTITASK' | 'FISHING' | 'FOSSIL' | 'RIVAL';
