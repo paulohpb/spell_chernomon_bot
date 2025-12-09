@@ -1,0 +1,32 @@
+# Dependencies
+/node_modules
+
+# Production
+/dist
+/build
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Env files
+.env
+.env*.local
+
+# IDEs and editors
+.idea
+.vscode/
+*.swp
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sublime-*

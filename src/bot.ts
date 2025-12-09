@@ -40,6 +40,7 @@ bot.on('callback_query:data', async (ctx) => {
   const s = gameService.getSession(userId);
   const data = ctx.callbackQuery.data;
 
+  // 1. Generation Selection
   if (data.startsWith('gen_')) {
     s.generation = parseInt(data.split('_')[1]);
     s.state = 'STARTER_SELECT';
@@ -51,35 +52,111 @@ bot.on('callback_query:data', async (ctx) => {
     await showAdventureMenu(ctx, s);
   }
 
+  // 2. Adventure Spin (The Main Logic)
   else if (data === 'spin_adventure') {
     const event = gameService.spinAdventure();
-    let text = `🎲 *Roulette Result:* ${event.replace('_', ' ')}\n`;
+    let text = `🎲 *Roulette Result:* ${event.replace(/_/g, ' ')}\n\n`;
     
     switch (event) {
       case 'CATCH_POKEMON':
-      case 'CATCH_TWO':
       case 'EXPLORE_CAVE':
+      case 'FISHING':
+      case 'SNORLAX':
         const newMon = await pokemonService.getRandomPokemon(s.generation);
         if (newMon) {
           if (s.team.length < 6) {
             s.team.push(newMon);
-            text += `You caught a *${newMon.name}*! (Power: ${newMon.power})`;
+            text += `✅ You caught a *${newMon.name}*! (Power: ${newMon.power})`;
           } else {
             s.storage.push(newMon);
-            text += `You caught *${newMon.name}*! sent to PC.`;
+            text += `📦 You caught *${newMon.name}*! Sent to PC.`;
           }
+        }
+        break;
+
+      case 'CATCH_TWO':
+        const mon1 = await pokemonService.getRandomPokemon(s.generation);
+        const mon2 = await pokemonService.getRandomPokemon(s.generation);
+        if (mon1 && mon2) {
+           s.team.length < 6 ? s.team.push(mon1) : s.storage.push(mon1);
+           s.team.length < 6 ? s.team.push(mon2) : s.storage.push(mon2);
+           text += `🔥 Lucky! You caught *${mon1.name}* AND *${mon2.name}*!`;
         }
         break;
 
       case 'BUY_POTIONS':
       case 'FIND_ITEM':
+      case 'FOSSIL':
         const potion = s.items.find(i => i.id === 'potion');
         if (potion) potion.count++;
-        text += `You found a Potion! 🧪`;
+        text += `🧪 You found a Potion! (Total: ${potion?.count})`;
+        break;
+
+      case 'MULTITASK':
+        // Simulating finding 2 items
+        const pot = s.items.find(i => i.id === 'potion');
+        if (pot) pot.count += 2;
+        text += `🏃 You multitasked and found *2 Potions*!`;
+        break;
+
+      case 'BATTLE_TRAINER':
+      case 'RIVAL':
+      case 'TEAM_ROCKET':
+        const wonBattle = Math.random() > 0.4; // 60% chance to win
+        if (wonBattle) {
+            text += `⚔️ You won the battle! You grabbed a Potion as spoils.`;
+            const p = s.items.find(i => i.id === 'potion');
+            if (p) p.count++;
+        } else {
+            text += `😵 You lost the battle and fled to the Center.`;
+        }
+        break;
+
+      case 'LEGENDARY':
+        // Simulating a hard catch (30% chance)
+        const legend = await pokemonService.getRandomPokemon(s.generation); 
+        // In real app, fetch specific legendary list. Here we assume random for now.
+        if (legend) {
+            // Force high power for "Legendary" feel if random one was weak
+            if (legend.power < 4) legend.power = 5; 
+            
+            const caught = Math.random() > 0.7;
+            if (caught) {
+                 s.team.push(legend);
+                 text += `✨✨ *LEGENDARY ENCOUNTER* ✨✨\nUnbelievable! You caught *${legend.name}*!`;
+            } else {
+                 text += `⚠️ A wild *${legend.name}* appeared but ran away!`;
+            }
+        }
+        break;
+
+      case 'VISIT_DAYCARE':
+      case 'MYSTERIOUS_EGG':
+        const eggMon = await pokemonService.getRandomPokemon(s.generation);
+        if (eggMon) {
+            text += `🥚 You received a Mysterious Egg... it hatched into *${eggMon.name}*!`;
+            s.team.length < 6 ? s.team.push(eggMon) : s.storage.push(eggMon);
+        }
+        break;
+
+      case 'TRADE':
+        if (s.team.length > 0) {
+            const tradeIn = await pokemonService.getRandomPokemon(s.generation);
+            const removeIdx = Math.floor(Math.random() * s.team.length);
+            const removed = s.team[removeIdx];
+            
+            if (tradeIn) {
+                s.team[removeIdx] = tradeIn;
+                text += `🔄 You traded your *${removed.name}* for a *${tradeIn.name}*!`;
+            }
+        } else {
+            text += `🔄 You wanted to trade, but you have no Pokemon!`;
+        }
         break;
         
       case 'NOTHING':
-        text += `A quiet walk... nothing happened.`;
+      default:
+        text += `🍃 A quiet walk... nothing happened.`;
         break;
     }
     
@@ -87,6 +164,7 @@ bot.on('callback_query:data', async (ctx) => {
     await showAdventureMenu(ctx, s);
   }
 
+  // 3. Gym Entry
   else if (data === 'enter_gym') {
     s.state = 'GYM_BATTLE';
     const leaderName = `Gym Leader #${s.round + 1}`;
@@ -98,6 +176,7 @@ bot.on('callback_query:data', async (ctx) => {
     });
   }
 
+  // 4. Gym Battle Logic
   else if (data === 'fight_gym') {
     const win = gameService.calculateBattleVictory(s);
     
